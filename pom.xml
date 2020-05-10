@@ -87,16 +87,14 @@
           <version>3.0.0</version>
         </plugin>
         <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-assembly-plugin</artifactId>
-            <version>2.2.1</version>
             <configuration>
                 <descriptorRefs>
                     <descriptorRef>jar-with-dependencies</descriptorRef>
                 </descriptorRefs>
                 <archive>
                     <manifest>
-                        <mainClass>Shares.CalculateMovingAverage.Calculate</mainClass>
+                        <mainClass>com.shares.CalculateMovingAverage.Calculate</mainClass>
                     </manifest>
                 </archive>
             </configuration>

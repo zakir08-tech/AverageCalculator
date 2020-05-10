@@ -31,13 +31,16 @@ public class Calculate {
 
     public static TreeMap < Integer, HashMap < String, String >> itemsMaster = new TreeMap < Integer, HashMap < String, String >> ();
     public static HashMap < String, String > itemLsit = new HashMap < String, String > ();
-
+    
+    public static TreeMap < Integer, String> holdLastShare = new TreeMap < Integer, String>();  
+    
     public static String sysDir = System.getProperty("user.dir");
     public static Integer noOfDays;
+    public static Integer extraNoOfDays;
     public static String startDate;
     public static String shareName;
-    public static String calcPath = sysDir + "\\CalculateMovingAverage\\Calculate.xlsm";
-    public static String shareListFilePath = sysDir + "\\CalculateMovingAverage\\SharesDatabase.csv";
+    public static String calcPath = sysDir + "\\MovingAverageCalculator\\Calculate.xlsm";
+    public static String shareListFilePath = sysDir + "\\MovingAverageCalculator\\SharesDatabase.csv";
     public static String strSelectQuerry = "Select * from  Calculate";
     public static BufferedReader csvBuffer;
     public static SimpleDateFormat formatter = new SimpleDateFormat("dd-MMM-yyyy");
@@ -51,14 +54,16 @@ public class Calculate {
         boolean firstDateFnd;
         Integer listCnt = 0;
         Integer panelCnt = 0;
-        String prevShareName = "";
-
+        String prevShareName = "Test";
+        boolean recFnd = false;
+        boolean readList = false;
+        
         try {
             Fillo fillo = new Fillo();
             Connection connection = fillo.getConnection(calcPath);
             Recordset recordset = null;
             recordset = connection.executeQuery(strSelectQuerry);
-
+            System.out.println("reading items to calculate moving average...");
             while (recordset.next()) {
             	if(!recordset.getField("Share Company Name").isEmpty()) {
             		listCnt++;
@@ -70,42 +75,60 @@ public class Calculate {
             	}   
             }
             connection.close();
-            csvBuffer = new BufferedReader(new FileReader(shareListFilePath));
-        } catch (FilloException | FileNotFoundException e) {
+        } catch (FilloException e) {
             System.out.println(e.getMessage());
         }
 
         try {
+        	readOnlyShareNameFromItemList();
             for (Entry < Integer, HashMap < String, String >> listEntry: itemsMaster.entrySet()) {
             	panelCnt++;
+            	extraNoOfDays = 0;
                 firstDateFnd = false;
                 movingAvgMaster = new TreeMap < Integer, HashMap < String, Double >> ();
-
-                Map < String, String > childListMap = listEntry.getValue();
+ 
+                HashMap<String, String> childListMap = listEntry.getValue();
                 shareName = childListMap.get("ShareName");
                 noOfDays = Integer.valueOf(childListMap.get("AvgerageDays"));
                 startDate = childListMap.get("StartDate");
                 startNewDate = formatter.parse(startDate);
-
+                
                 if (!shareName.contentEquals(prevShareName)) {
+                	shareDetailsMaster = new TreeMap < Date, HashMap < String, String >> ();
+                	csvBuffer = new BufferedReader(new FileReader(shareListFilePath));
+                	System.out.println("start calculating moving average for " +shareName);
                     readShareDataFromList();
+                    readList = true;
                     prevShareName = shareName;
                 }
-
+                
+                if(shareDetailsMaster.size()==0)
+                	System.out.println("no data found for " +shareName+ " in the database!");
+                	
                 for (Entry < Date, HashMap < String, String >> entry: shareDetailsMaster.entrySet()) {
-                    if (firstDateFnd == true)
-                        getAvgOfNextNoOfDays(noOfDays, entry.getKey());
-                    if (entry.getKey().toString().contentEquals(startNewDate.toString())) {
-                        getAvgOfNextNoOfDays(noOfDays, entry.getKey());
-                        firstDateFnd = true;
+                    if (firstDateFnd == true) {
+                    	recFnd = true;
+                    	 getAvgOfNextNoOfDays(noOfDays, entry.getKey());
                     }
+                    
+                    if (entry.getKey().equals(startNewDate) || entry.getKey().after(startNewDate)) {
+                        getAvgOfNextNoOfDays(noOfDays, entry.getKey());
+                        recFnd = true;
+                        firstDateFnd = true;
+                    }else
+                    	extraNoOfDays++;
                 }
+                
                 readAllTabData = readAllTabData + createMovingAverageTable(panelCnt);
+                
+                if ((recFnd == true && holdLastShare.size()==panelCnt) || 
+                		(recFnd == true && !holdLastShare.get(panelCnt+1).contentEquals(prevShareName))) {
+            		generateMovingAverageReport();
+                	readAllTabData = "";
+                	recFnd = false;
+            	}
+                csvBuffer.close();
             }
-
-            csvBuffer.close();
-            generateMovingAverageReport();
-
         } catch (IOException | ParseException e) {
             e.printStackTrace();
         }
@@ -176,17 +199,6 @@ public class Calculate {
     }
 
     public static void generateMovingAverageReport() {
-        String htmlTable = "";
-        String htmlTableTxt = "";
-        String timeStampTxt = "";
-        String openPriceTxt = "";
-        String highPriceTxt = "";
-        String lowPriceTxt = "";
-        String closePriceTxt = "";
-        String totalTradedQuantityTxt = "";
-        Integer recCnt = 0;
-        String getNewTxt = "";
-
         String htmlData1 = "<!DOCTYPE html>\r\n" + "<html lang=\"en\">\r\n" +
             "  <head>\r\n" +
             "     <title>Moving Average Calculator</title>\r\n" +
@@ -266,8 +278,9 @@ public class Calculate {
             "</html>";
 
         String htmlPage = htmlData1 + readAllTabData + htmlData2;
-        System.out.println("Start generating report!");
+        System.out.println("start generating report....");
         saveMovingAverageReport(htmlPage);
+        System.out.println("moving average calculation is over!");
     }
 
     public static void saveMovingAverageReport(String htmlDocument) {
@@ -387,16 +400,28 @@ public class Calculate {
             lowPriceTxt = childMap.get("LowPrice");
             closePriceTxt = childMap.get("ClosePrice");
             totalTradedQuantityTxt = childMap.get("TotalTradedQuantity");
-
-            htmlTableTxt = "                                <tr>\r\n" +
-                "                                   <td>" + timeStampTxt + "</td>\r\n" +
-                "                                   <td>" + openPriceTxt + "</td>\r\n" +
-                "                                   <td>" + highPriceTxt + "</td>\r\n" +
-                "                                   <td>" + lowPriceTxt + "</td>\r\n" +
-                "                                   <td>" + closePriceTxt + "</td>\r\n" +
-                "                                   <td>" + totalTradedQuantityTxt + "</td>\r\n" +
-                "                                   <td></td>\r\n";
-            if (recCnt > noOfDays) {
+            
+            if(recCnt == extraNoOfDays+1) {
+            	htmlTableTxt = "                                <tr style=\"background-color:orange\">\r\n" +
+                        "                                   <td>" + timeStampTxt + "</td>\r\n" +
+                        "                                   <td>" + openPriceTxt + "</td>\r\n" +
+                        "                                   <td>" + highPriceTxt + "</td>\r\n" +
+                        "                                   <td>" + lowPriceTxt + "</td>\r\n" +
+                        "                                   <td>" + closePriceTxt + "</td>\r\n" +
+                        "                                   <td>" + totalTradedQuantityTxt + "</td>\r\n" +
+                        "                                   <td></td>\r\n";
+            }else {
+            	htmlTableTxt = "                                <tr>\r\n" +
+                        "                                   <td>" + timeStampTxt + "</td>\r\n" +
+                        "                                   <td>" + openPriceTxt + "</td>\r\n" +
+                        "                                   <td>" + highPriceTxt + "</td>\r\n" +
+                        "                                   <td>" + lowPriceTxt + "</td>\r\n" +
+                        "                                   <td>" + closePriceTxt + "</td>\r\n" +
+                        "                                   <td>" + totalTradedQuantityTxt + "</td>\r\n" +
+                        "                                   <td></td>\r\n";
+            }
+            
+            if (recCnt > noOfDays+extraNoOfDays) {
                 htmlTableTxt = htmlTableTxt + "                                   <td>" + getMovingAverage(recCnt - noOfDays, "OpenPrice") + "</td>\r\n" +
                     "                                   <td>" + getMovingAverage(recCnt - noOfDays, "HighPrice") + "</td>\r\n" +
                     "                                   <td>" + getMovingAverage(recCnt - noOfDays, "LowPrice") + "</td>\r\n" +
@@ -430,5 +455,14 @@ public class Calculate {
             "                 </div>\r\n";
         
         return htmlPanelBody + htmlTable;
+    }
+    
+    public static void readOnlyShareNameFromItemList() {
+    	Integer shareListcnt = 0;
+    	for (Entry < Integer, HashMap < String, String >> listEntry: itemsMaster.entrySet()) {
+    		shareListcnt++;
+            Map < String, String > childListMap = listEntry.getValue();
+            holdLastShare.put(shareListcnt, childListMap.get("ShareName").toString());
+    	}
     }
 }

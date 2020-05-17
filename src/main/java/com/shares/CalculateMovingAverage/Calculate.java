@@ -38,7 +38,7 @@ public class Calculate {
     public static Integer noOfDays;
     public static Integer extraNoOfDays;
     public static String startDate;
-    public static String shareName;
+    public static String shareName;	
     public static String calcPath = sysDir + "\\MovingAverageCalculator\\Calculate.xlsm";
     public static String shareListFilePath = sysDir + "\\MovingAverageCalculator\\SharesDatabase.csv";
     public static String strSelectQuerry = "Select * from  Calculate";
@@ -111,12 +111,14 @@ public class Calculate {
                     	 getAvgOfNextNoOfDays(noOfDays, entry.getKey());
                     }
                     
-                    if (entry.getKey().equals(startNewDate) || entry.getKey().after(startNewDate)) {
-                        getAvgOfNextNoOfDays(noOfDays, entry.getKey());
-                        recFnd = true;
-                        firstDateFnd = true;
-                    }else
-                    	extraNoOfDays++;
+                    if (firstDateFnd == false) {
+                    	if (entry.getKey().equals(startNewDate) || entry.getKey().after(startNewDate)) {
+                            getAvgOfNextNoOfDays(noOfDays, entry.getKey());
+                            recFnd = true;
+                            firstDateFnd = true;
+                        }else
+                        	extraNoOfDays++;
+                    }
                 }
                 
                 readAllTabData = readAllTabData + createMovingAverageTable(panelCnt);
@@ -143,36 +145,25 @@ public class Calculate {
         int dayCount = 0;
         boolean startRow = false;
         String getNewTxt = "";
-
+        
         for (Entry < Date, HashMap < String, String >> entry: shareDetailsMaster.entrySet()) {
+        	
             if (startRow == true)
                 getStartDate = entry.getKey();
 
             if (entry.getKey().equals(getStartDate)) {
+            	dayCount++;
                 startRow = true;
                 Map < String, String > childMap = entry.getValue();
-                ++dayCount;
-
-                for (Entry < String, String > entry2: childMap.entrySet()) {
-                    if (entry2.getKey().toString().contentEquals("OpenPrice")) {
-                        openPrice = openPrice + Double.valueOf(entry2.getValue().toString());
-                    }
-                    if (entry2.getKey().toString().contentEquals("HighPrice")) {
-                        highPrice = highPrice + Double.valueOf(entry2.getValue().toString());
-                    }
-                    if (entry2.getKey().toString().contentEquals("LowPrice")) {
-                        lowPrice = lowPrice + Double.valueOf(entry2.getValue().toString());
-                    }
-                    if (entry2.getKey().toString().contentEquals("ClosePrice")) {
-                        closePrice = closePrice + Double.valueOf(entry2.getValue().toString());
-                    }
-                    if (entry2.getKey().toString().contentEquals("TotalTradedQuantity")) {
-                        totalTradedQuantity = totalTradedQuantity + Double.parseDouble(entry2.getValue().toString());
-                    }
-                }
-                if (dayCount == noOfDays)
-                    break;
+                
+                openPrice = openPrice + Double.valueOf(childMap.get("OpenPrice"));
+                highPrice = highPrice + Double.valueOf(childMap.get("HighPrice"));
+                lowPrice = lowPrice + Double.valueOf(childMap.get("LowPrice"));
+                closePrice = closePrice + Double.valueOf(childMap.get("ClosePrice"));
+                totalTradedQuantity = totalTradedQuantity + Double.valueOf(childMap.get("TotalTradedQuantity"));
             }
+            if (dayCount == noOfDays)
+                break;
         }
 
         double openPriceAvg = Math.round((openPrice / dayDiff) * 100.0) / 100.0;
@@ -362,37 +353,55 @@ public class Calculate {
         String lowPriceTxt = "";
         String closePriceTxt = "";
         String totalTradedQuantityTxt = "";
-        Integer recCnt = 0;
+        int recCnt = 1;
+        int recCntx=1;
         String getNewTxt = "";
-
+        int noOfDaysx = noOfDays;
+        int extraNoOfDaysx = extraNoOfDays;
+        double getOpenPriceNew=0;
+        double getPrevOpenPrice=0;
+        
         String htmlPanelBody = "                 <div class=\"panel panel-default\">\r\n" +
             "                    <div class=\"panel-heading\">\r\n" +
             "                       <h4 class=\"panel-title\">\r\n" +
-            "                          <a data-toggle=\"collapse\" data-parent=\"#accordion\" href=\"#collapse"+panelNo+"\">" + noOfDays + " day Moving Average</a>\r\n" +
+            "                          <a data-toggle=\"collapse\" data-parent=\"#accordion\" href=\"#collapse"+panelNo+"\"><font style=\"color:red\"><b>" + noOfDays + "</b></font> day Moving Average</a>\r\n" +
             "                       </h4>\r\n" +
             "                    </div>\r\n" +
             "                    <div id=\"collapse"+panelNo+"\" class=\"panel-collapse collapse\">\r\n" +
             "                       <div class=\"panel-body\">\r\n" +
             "                          <table class=\"hoverTable\">\r\n" +
             "                             <thead>\r\n" +
+            "								<tr>\r\n" + 
+            "                                   <th style=\"font-family:consolas; color:red;text-align:center;\"><i>Actual Data:</i></th>\r\n" + 
+            "                                   <th></th>\r\n" + 
+            "                                   <th></th>\r\n" + 
+            "                                   <th></th>\r\n" + 
+            "                                   <th></th>\r\n" + 
+            "                                   <th></th>\r\n" + 
+            "                                   <th></th>\r\n" + 
+            "                                   <th style=\"font-family:consolas; color:#428bca;text-align:center;\"><i>Moving Average:</i></th>\r\n" + 
+            "                                   <th></th>\r\n" + 
+            "                                   <th></th>\r\n" + 
+            "                                   <th></th>\r\n" + 
+            "                                   <th></th>\r\n" + 
+            "                                </tr>\r\n" + 
             "                                <tr>\r\n" +
-            "                                   <th>Date</th>\r\n" +
-            "                                   <th>Open Price</th>\r\n" +
-            "                                   <th>High Price</th>\r\n" +
-            "                                   <th>Low Price</th>\r\n" +
-            "                                   <th>Close Price</th>\r\n" +
-            "                                   <th>Total Traded Quantity</th>\r\n" +
+            "                                   <th style=\"color:#428bca\">Date</th>\r\n" +
+            "                                   <th style=\"color:#428bca\">Open Price</th>\r\n" +
+            "                                   <th style=\"color:#428bca\">High Price</th>\r\n" +
+            "                                   <th style=\"color:#428bca\">Low Price</th>\r\n" +
+            "                                   <th style=\"color:#428bca\">Close Price</th>\r\n" +
+            "                                   <th style=\"color:#428bca\">Total Traded Quantity</th>\r\n" +
             "                                   <th></th>\r\n" +
-            "                                   <th>Open Price</th>\r\n" +
-            "                                   <th>High Price</th>\r\n" +
-            "                                   <th>Low Price</th>\r\n" +
-            "                                   <th>Close Price</th>\r\n" +
-            "                                   <th>Total Traded Quantity</th>\r\n" +
+            "                                   <th style=\"color:red\">Open Price</th>\r\n" +
+            "                                   <th style=\"color:red\">High Price</th>\r\n" +
+            "                                   <th style=\"color:red\">Low Price</th>\r\n" +
+            "                                   <th style=\"color:red\">Close Price</th>\r\n" +
+            "                                   <th style=\"color:red\">Total Traded Quantity</th>\r\n" +
             "                                </tr>\r\n" + "                             </thead>\r\n" +
             "                             <tbody>\r\n";
 
         for (Entry < Date, HashMap < String, String >> entry: shareDetailsMaster.entrySet()) {
-            recCnt++;
             Map < String, String > childMap = entry.getValue();
             timeStampTxt = childMap.get("TimeStamp");
             openPriceTxt = childMap.get("OpenPrice");
@@ -401,7 +410,7 @@ public class Calculate {
             closePriceTxt = childMap.get("ClosePrice");
             totalTradedQuantityTxt = childMap.get("TotalTradedQuantity");
             
-            if(recCnt == extraNoOfDays+1) {
+            if(recCnt == extraNoOfDaysx+1) {
             	htmlTableTxt = "                                <tr style=\"background-color:orange\">\r\n" +
                         "                                   <td>" + timeStampTxt + "</td>\r\n" +
                         "                                   <td>" + openPriceTxt + "</td>\r\n" +
@@ -421,22 +430,47 @@ public class Calculate {
                         "                                   <td></td>\r\n";
             }
             
-            if (recCnt > noOfDays+extraNoOfDays) {
-                htmlTableTxt = htmlTableTxt + "                                   <td>" + getMovingAverage(recCnt - noOfDays, "OpenPrice") + "</td>\r\n" +
-                    "                                   <td>" + getMovingAverage(recCnt - noOfDays, "HighPrice") + "</td>\r\n" +
-                    "                                   <td>" + getMovingAverage(recCnt - noOfDays, "LowPrice") + "</td>\r\n" +
-                    "                                   <td>" + getMovingAverage(recCnt - noOfDays, "ClosePrice") + "</td>\r\n";
+            if (recCnt > (noOfDaysx-1)+extraNoOfDaysx) {
+            	if(recCntx>=1) {
+            		getOpenPriceNew = Double.valueOf(getMovingAverage(recCntx , "OpenPrice"));
+            		if(recCntx !=1)
+            			getPrevOpenPrice = Double.valueOf(getMovingAverage(recCntx-1 , "OpenPrice"));
+            	}
+            	
+            	if(getOpenPriceNew <= getPrevOpenPrice) {
+            		htmlTableTxt = htmlTableTxt + "                                   <td style=\"background-color:pink\">" + getMovingAverage(recCntx , "OpenPrice") + "</td>\r\n" +
+                            "                                   <td style=\"background-color:pink\">" + getMovingAverage(recCntx , "HighPrice") + "</td>\r\n" +
+                            "                                   <td style=\"background-color:pink\">" + getMovingAverage(recCntx , "LowPrice") + "</td>\r\n" +
+                            "                                   <td style=\"background-color:pink\">" + getMovingAverage(recCntx , "ClosePrice") + "</td>\r\n";
 
-                String getTotalTrdQty = getMovingAverage(recCnt - noOfDays, "TotalTradedQuantity");
+            	}else
+            	{
+            		htmlTableTxt = htmlTableTxt + "                                   <td>" + getMovingAverage(recCntx , "OpenPrice") + "</td>\r\n" +
+                            "                                   <td>" + getMovingAverage(recCntx , "HighPrice") + "</td>\r\n" +
+                            "                                   <td>" + getMovingAverage(recCntx , "LowPrice") + "</td>\r\n" +
+                            "                                   <td>" + getMovingAverage(recCntx , "ClosePrice") + "</td>\r\n";
+            	}
+                
+                String getTotalTrdQty = getMovingAverage(recCntx , "TotalTradedQuantity");
 
                 if (String.format("%.2f", Double.parseDouble(getTotalTrdQty)).contains(".00"))
                     getNewTxt = String.format("%.0f", Double.parseDouble(getTotalTrdQty));
                 else
                     getNewTxt = String.format("%.1f", Double.parseDouble(getTotalTrdQty));
+                
+                if(getOpenPriceNew <= getPrevOpenPrice) {
+                	htmlTableTxt = htmlTableTxt + "                                   <td style=\"background-color:pink\">" + getNewTxt + "</td>\r\n" +
+                            "                                </tr>\r\n";
 
-                htmlTableTxt = htmlTableTxt + "                                   <td>" + getNewTxt + "</td>\r\n" +
-                    "                                </tr>\r\n";
-            } else {
+                }else
+                {
+                	htmlTableTxt = htmlTableTxt + "                                   <td>" + getNewTxt + "</td>\r\n" +
+                            "                                </tr>\r\n";
+
+                }
+                                recCntx++;
+            }
+			else {
                 htmlTableTxt = htmlTableTxt + "                                   <td>-</td>\r\n" +
                     "                                   <td>-</td>\r\n" +
                     "                                   <td>-</td>\r\n" +
@@ -446,6 +480,7 @@ public class Calculate {
 
             htmlTable = htmlTable + htmlTableTxt;
             htmlTableTxt = "";
+            recCnt++;
         }
 
         htmlTable = htmlTable + "                             </tbody>\r\n" +

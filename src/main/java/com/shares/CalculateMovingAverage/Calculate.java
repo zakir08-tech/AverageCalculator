@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -41,14 +42,18 @@ public class Calculate {
     public static String shareName;	
     public static String calcPath = sysDir + "\\MovingAverageCalculator\\Calculate.xlsm";
     public static String shareListFilePath = sysDir + "\\MovingAverageCalculator\\SharesDatabase.csv";
-    public static String strSelectQuerry = "Select * from  Calculate";
+    public static String niftyListFilePath = sysDir + "\\MovingAverageCalculator\\NiftyDatabase.csv";
+    public static String strSelectQueryShare = "Select * from  Share_Average";
+    public static String strSelectQueryNifty = "Select * from  Nifty_Average";
     public static BufferedReader csvBuffer;
     public static SimpleDateFormat formatter = new SimpleDateFormat("dd-MMM-yyyy");
+    public static SimpleDateFormat formatter1 = new SimpleDateFormat("dd/mm/yyyy");
     public static String line = "";
     public static String splitBy = ",";
     public static Date startNewDate;
     public static Date startListDate;
     public static String readAllTabData = "";
+    public static String transType;
     
     public static void main(String[] args) {
         boolean firstDateFnd;
@@ -57,17 +62,29 @@ public class Calculate {
         String prevShareName = "Test";
         boolean recFnd = false;
         boolean readList = false;
+        transType = args[0];
+        String runTimeQuery = null;
+        String runTimeFilePath = null;
+        
+        if(transType.contentEquals("share")) {
+        	runTimeQuery = strSelectQueryShare;
+        	runTimeFilePath = shareListFilePath;
+        }
+        else if(transType.contentEquals("nifty")) {
+        	runTimeQuery = strSelectQueryNifty;
+        	runTimeFilePath = niftyListFilePath;
+        }
         
         try {
             Fillo fillo = new Fillo();
             Connection connection = fillo.getConnection(calcPath);
             Recordset recordset = null;
-            recordset = connection.executeQuery(strSelectQuerry);
+            recordset = connection.executeQuery(runTimeQuery);
             System.out.println("reading items to calculate moving average...");
             while (recordset.next()) {
-            	if(!recordset.getField("Share Company Name").isEmpty()) {
+            	if(!recordset.getField("Company Name").isEmpty()) {
             		listCnt++;
-                    itemLsit.put("ShareName", recordset.getField("Share Company Name"));
+                    itemLsit.put("CompanyName", recordset.getField("Company Name"));
                     itemLsit.put("AvgerageDays", recordset.getField("Moving Average Of Days"));
                     itemLsit.put("StartDate", recordset.getField("Start Date"));
                     itemsMaster.put(listCnt, itemLsit);
@@ -88,14 +105,14 @@ public class Calculate {
                 movingAvgMaster = new TreeMap < Integer, HashMap < String, Double >> ();
  
                 HashMap<String, String> childListMap = listEntry.getValue();
-                shareName = childListMap.get("ShareName");
+                shareName = childListMap.get("CompanyName");
                 noOfDays = Integer.valueOf(childListMap.get("AvgerageDays"));
                 startDate = childListMap.get("StartDate");
                 startNewDate = formatter.parse(startDate);
                 
                 if (!shareName.contentEquals(prevShareName)) {
                 	shareDetailsMaster = new TreeMap < Date, HashMap < String, String >> ();
-                	csvBuffer = new BufferedReader(new FileReader(shareListFilePath));
+                	csvBuffer = new BufferedReader(new FileReader(runTimeFilePath));
                 	System.out.println("start calculating moving average for " +shareName);
                     readShareDataFromList();
                     readList = true;
@@ -316,22 +333,35 @@ public class Calculate {
     }
 
     public static void readShareDataFromList() {
+    	String strDate = null;
+    	
         // parsing a CSV file into BufferedReader class constructor
         try {
             while ((line = csvBuffer.readLine()) != null) // returns a Boolean value
             {
                 String[] employee = line.split(splitBy); // use comma as separator
                 if (employee[0].contentEquals(shareName)) {
-
-                    startListDate = formatter.parse(employee[10]);
-
+                	 if(transType.contentEquals("share"))
+                		 startListDate = formatter.parse(employee[10]);
+                     else if(transType.contentEquals("nifty")) {
+                    	 DateFormat srcDf = new SimpleDateFormat("dd/MM/yyyy");
+                    	 Date date = srcDf.parse(employee[1]);
+                    	 DateFormat destDf = new SimpleDateFormat("dd-MMM-yy");
+                    	 strDate  = destDf.format(date);
+                    	 startListDate = formatter.parse(strDate);
+                     }
+                	 
                     shareDetails.put("OpenPrice", employee[2]);
                     shareDetails.put("HighPrice", employee[3]);
                     shareDetails.put("LowPrice", employee[4]);
                     shareDetails.put("ClosePrice", employee[5]);
                     shareDetails.put("TotalTradedQuantity", employee[8]);
-                    shareDetails.put("TimeStamp", employee[10]);
-
+                    if(transType.contentEquals("share"))
+                    	shareDetails.put("TimeStamp", employee[10]);
+                    else if(transType.contentEquals("nifty")) {
+                    	shareDetails.put("TimeStamp", strDate);
+                    }
+                    	                    
                     shareDetailsMaster.put(startListDate, shareDetails);
                     shareDetails = new HashMap < String, String > ();
                 }
@@ -360,6 +390,7 @@ public class Calculate {
         int extraNoOfDaysx = extraNoOfDays;
         double getOpenPriceNew=0;
         double getPrevOpenPrice=0;
+        String addPanel = null;
         
         String htmlPanelBody = "                 <div class=\"panel panel-default\">\r\n" +
             "                    <div class=\"panel-heading\">\r\n" +
@@ -384,23 +415,43 @@ public class Calculate {
             "                                   <th></th>\r\n" + 
             "                                   <th></th>\r\n" + 
             "                                   <th></th>\r\n" + 
-            "                                </tr>\r\n" + 
-            "                                <tr>\r\n" +
-            "                                   <th style=\"color:#428bca\">Date</th>\r\n" +
-            "                                   <th style=\"color:#428bca\">Open Price</th>\r\n" +
-            "                                   <th style=\"color:#428bca\">High Price</th>\r\n" +
-            "                                   <th style=\"color:#428bca\">Low Price</th>\r\n" +
-            "                                   <th style=\"color:#428bca\">Close Price</th>\r\n" +
-            "                                   <th style=\"color:#428bca\">Total Traded Quantity</th>\r\n" +
-            "                                   <th></th>\r\n" +
-            "                                   <th style=\"color:red\">Open Price</th>\r\n" +
-            "                                   <th style=\"color:red\">High Price</th>\r\n" +
-            "                                   <th style=\"color:red\">Low Price</th>\r\n" +
-            "                                   <th style=\"color:red\">Close Price</th>\r\n" +
-            "                                   <th style=\"color:red\">Total Traded Quantity</th>\r\n" +
-            "                                </tr>\r\n" + "                             </thead>\r\n" +
-            "                             <tbody>\r\n";
-
+            "                                </tr>\r\n";
+            if(transType.contentEquals("share"))  {
+            	addPanel = "                                <tr>\r\n" +
+                        "                                   <th style=\"color:#428bca\">Timestamp</th>\r\n" +
+                        "                                   <th style=\"color:#428bca\">Open Value</th>\r\n" +
+                        "                                   <th style=\"color:#428bca\">High Value</th>\r\n" +
+                        "                                   <th style=\"color:#428bca\">Low Value</th>\r\n" +
+                        "                                   <th style=\"color:#428bca\">Closing Value</th>\r\n" +
+                        "                                   <th style=\"color:#428bca\">Total Traded Quantity</th>\r\n" +
+                        "                                   <th></th>\r\n" +
+                        "                                   <th style=\"color:red\">Open Value</th>\r\n" +
+                        "                                   <th style=\"color:red\">High Value</th>\r\n" +
+                        "                                   <th style=\"color:red\">Low Value</th>\r\n" +
+                        "                                   <th style=\"color:red\">Closing Value</th>\r\n" +
+                        "                                   <th style=\"color:red\">Total Traded Quantity</th>\r\n" +
+                        "                                </tr>\r\n" + "                             </thead>\r\n" +
+                        "                             <tbody>\r\n";
+            }else if(transType.contentEquals("nifty"))  {
+            	addPanel = "                                <tr>\r\n" +
+                        "                                   <th style=\"color:#428bca\">Timestamp</th>\r\n" +
+                        "                                   <th style=\"color:#428bca\">Open Value</th>\r\n" +
+                        "                                   <th style=\"color:#428bca\">High Value</th>\r\n" +
+                        "                                   <th style=\"color:#428bca\">Low Value</th>\r\n" +
+                        "                                   <th style=\"color:#428bca\">Closing Value</th>\r\n" +
+                        "                                   <th style=\"color:#428bca\">Total Traded Volume</th>\r\n" +
+                        "                                   <th></th>\r\n" +
+                        "                                   <th style=\"color:red\">Open Value</th>\r\n" +
+                        "                                   <th style=\"color:red\">High Value</th>\r\n" +
+                        "                                   <th style=\"color:red\">Low Value</th>\r\n" +
+                        "                                   <th style=\"color:red\">Closing Value</th>\r\n" +
+                        "                                   <th style=\"color:red\">Total Traded Volume</th>\r\n" +
+                        "                                </tr>\r\n" + "                             </thead>\r\n" +
+                        "                             <tbody>\r\n";
+            }
+            
+            htmlPanelBody = htmlPanelBody + addPanel;
+            
         for (Entry < Date, HashMap < String, String >> entry: shareDetailsMaster.entrySet()) {
             Map < String, String > childMap = entry.getValue();
             timeStampTxt = childMap.get("TimeStamp");
@@ -497,7 +548,7 @@ public class Calculate {
     	for (Entry < Integer, HashMap < String, String >> listEntry: itemsMaster.entrySet()) {
     		shareListcnt++;
             Map < String, String > childListMap = listEntry.getValue();
-            holdLastShare.put(shareListcnt, childListMap.get("ShareName").toString());
+            holdLastShare.put(shareListcnt, childListMap.get("CompanyName").toString());
     	}
     }
 }

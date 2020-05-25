@@ -142,8 +142,7 @@ public class Calculate {
 				readAllTabData = readAllTabData + createMovingAverageTable(panelCnt);
 
 				if ((recFnd == true && holdLastShare.size() == panelCnt) ||
-					(recFnd == true && !holdLastShare.get(panelCnt + 1)
-						.contentEquals(prevShareName))) {
+					(recFnd == true && !holdLastShare.get(panelCnt + 1).contentEquals(prevShareName))) {
 					generateMovingAverageReport();
 					readAllTabData = "";
 					recFnd = false;
@@ -533,10 +532,10 @@ public class Calculate {
 			if (recCnt > (noOfDaysx - 1) + extraNoOfDaysx) {
 				if (recCntx >= 1) {
 					getLowPriceNew = Double.valueOf(getMovingAverage(recCntx, "LowPrice"));
-					getNexLowPrice = Double.valueOf(readDataFromMasterShareDetails(recCntx + noOfDaysx + 1, "LowPrice"));
+					getNexLowPrice = Double.valueOf(readDataFromMasterShareDetails(recCntx + noOfDaysx + extraNoOfDaysx, "LowPrice"));
 					
 					getHighPriceNew = Double.valueOf(getMovingAverage(recCntx, "HighPrice"));
-					getNexHighPrice = Double.valueOf(readDataFromMasterShareDetails(recCntx + noOfDaysx + 1, "HighPrice"));
+					getNexHighPrice = Double.valueOf(readDataFromMasterShareDetails(recCntx + noOfDaysx + extraNoOfDaysx, "HighPrice"));
 				}
 	
 				htmlTableTxt = htmlTableTxt + "                                   <td>" + getMovingAverage(recCntx, "OpenPrice") + "</td>\r\n" +
@@ -607,28 +606,10 @@ public class Calculate {
 									"                                </tr>\r\n";
 						}
 					}else {
-						//salefnd = false;
 						htmlTableTxt = htmlTableTxt + "                                   <td></td>\r\n" +
 								"                                   <td></td>\r\n" +
 								"                                </tr>\r\n";
 					}
-					
-					/*
-					 * if(isProfitLoss.contentEquals("false")) { salefnd = false; htmlTableTxt =
-					 * htmlTableTxt +
-					 * "                                   <td style=\"background-color:pink\" title=\"Loss\">"
-					 * +calProfitLoss+"</td>\r\n" +
-					 * "                                   <td></td>\r\n" +
-					 * "                                </tr>\r\n"; }else
-					 * if(isProfitLoss.contentEquals("true")) { salefnd = false; htmlTableTxt =
-					 * htmlTableTxt + "                                   <td></td>\r\n" +
-					 * "                                   <td style=\"background-color:#90EE90\" title=\"Profit\">"
-					 * +calProfitLoss+"</td>\r\n" + "                                </tr>\r\n";
-					 * }else { htmlTableTxt = htmlTableTxt +
-					 * "                                   <td></td>\r\n" +
-					 * "                                   <td></td>\r\n" +
-					 * "                                </tr>\r\n"; }
-					 */
 					
 				recCntx++;
 			} else {
